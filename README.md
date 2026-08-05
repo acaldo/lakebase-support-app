@@ -1,6 +1,12 @@
 # Lakebase Support Board
 
+This project was developed as part of [The Rise of the AI Data Engineer](https://learn.dataexpert.io/), taught by Zach Wilson.
+
 An internal support-ticket Kanban built with React, TypeScript, Vite, Express, and PostgreSQL 17. It runs against a local Docker database during development and switches to Databricks Lakebase with OAuth credential rotation when deployed as a Databricks App.
+
+## Homework submission
+
+The Databricks App URL, deployment and Lakebase screenshots, and reflection are documented in [SUBMISSION.md](SUBMISSION.md).
 
 ## Features
 
