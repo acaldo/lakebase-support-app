@@ -19,9 +19,23 @@ const localEnvironmentSchema = baseEnvironmentSchema.extend({
   PGPASSWORD: z.string().min(1),
 });
 
+const databricksHostSchema = z.preprocess(
+  (value) => {
+    if (typeof value !== 'string') {
+      return value;
+    }
+
+    const host = value.trim().replace(/\/+$/, '');
+    return /^https?:\/\//i.test(host) ? host : `https://${host}`;
+  },
+  z.string().url().refine((value) => new URL(value).protocol === 'https:', {
+    message: 'Databricks workspace URL must use HTTPS',
+  }),
+);
+
 const lakebaseEnvironmentSchema = baseEnvironmentSchema.extend({
   DB_PROVIDER: z.literal('lakebase'),
-  DATABRICKS_HOST: z.string().url(),
+  DATABRICKS_HOST: databricksHostSchema,
   DATABRICKS_CLIENT_ID: z.string().min(1),
   DATABRICKS_CLIENT_SECRET: z.string().min(1),
   LAKEBASE_ENDPOINT_NAME: z.string().min(1),
