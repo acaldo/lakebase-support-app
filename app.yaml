@@ -1,0 +1,11 @@
+command:
+  - npm
+  - run
+  - start
+env:
+  - name: DB_PROVIDER
+    value: lakebase
+  - name: DB_SCHEMA
+    value: support_board
+  - name: LAKEBASE_ENDPOINT_NAME
+    valueFrom: postgres
