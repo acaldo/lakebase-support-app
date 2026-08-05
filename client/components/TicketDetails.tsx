@@ -1,12 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { CalendarDays, MessageSquarePlus, Trash2, UserRound, X } from 'lucide-react';
 import { createMessageSchema } from '../../shared/schemas.js';
-import { TICKET_STATUSES, type TicketDetail, type TicketStatus } from '../../shared/types.js';
-import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS, formatDateTime, initials } from '../format.js';
+import type { TicketCatalogs, TicketDetail, TicketStatus } from '../../shared/types.js';
+import { catalogLabel, catalogStyleModifier, formatDateTime, initials } from '../format.js';
 import { ConfirmDialog } from './ConfirmDialog.js';
 
 interface TicketDetailsProps {
   ticket?: TicketDetail;
+  catalogs: TicketCatalogs;
   loading: boolean;
   statusPending: boolean;
   messagePending: boolean;
@@ -19,6 +20,7 @@ interface TicketDetailsProps {
 
 export function TicketDetails({
   ticket,
+  catalogs,
   loading,
   statusPending,
   messagePending,
@@ -31,6 +33,9 @@ export function TicketDetails({
   const [message, setMessage] = useState('');
   const [messageError, setMessageError] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const statusCatalog = ticket
+    ? catalogs.statuses.find((status) => status.code === ticket.status)
+    : undefined;
 
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
@@ -65,8 +70,10 @@ export function TicketDetails({
               <div className="ticket-number">Ticket #{ticket.ticket_id}</div>
               <h2 id="ticket-detail-title">{ticket.title}</h2>
               <div className="badge-row">
-                <span className={`priority-badge priority-badge--${ticket.priority}`}>{PRIORITY_LABELS[ticket.priority]}</span>
-                <span className="category-label">{CATEGORY_LABELS[ticket.category]}</span>
+                <span className={`priority-badge priority-badge--${catalogStyleModifier(ticket.priority, ['low', 'medium', 'high', 'urgent'])}`}>
+                  {catalogLabel(catalogs.priorities, ticket.priority)}
+                </span>
+                <span className="category-label">{catalogLabel(catalogs.categories, ticket.category)}</span>
               </div>
               {ticket.description && <p className="ticket-description">{ticket.description}</p>}
               <div className="detail-meta">
@@ -78,12 +85,12 @@ export function TicketDetails({
             <section className="status-control" aria-labelledby="status-label">
               <div>
                 <span className="eyebrow" id="status-label">Current status</span>
-                <strong>{STATUS_LABELS[ticket.status]}</strong>
+                <strong>{catalogLabel(catalogs.statuses, ticket.status)}</strong>
               </div>
               <label>
                 <span className="sr-only">Update ticket status</span>
                 <select value={ticket.status} disabled={statusPending} onChange={(event) => onStatusChange(event.target.value as TicketStatus)}>
-                  {TICKET_STATUSES.map((status) => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}
+                  {catalogs.statuses.map((status) => <option key={status.code} value={status.code}>{status.label}</option>)}
                 </select>
               </label>
             </section>
@@ -117,11 +124,11 @@ export function TicketDetails({
               </form>
             </section>
 
-            {ticket.status === 'archived' && (
+            {statusCatalog?.allows_deletion && (
               <section className="danger-zone">
                 <div>
                   <strong>Delete ticket</strong>
-                  <p>Permanently remove this archived ticket and its conversation.</p>
+                  <p>Permanently remove this ticket and its conversation.</p>
                 </div>
                 <button className="button button--danger-outline" onClick={() => setConfirmingDelete(true)}>
                   <Trash2 size={17} /> Delete ticket

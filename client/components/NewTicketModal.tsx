@@ -1,27 +1,47 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { X } from 'lucide-react';
 import { createTicketSchema, type CreateTicketInput } from '../../shared/schemas.js';
-import { TICKET_CATEGORIES, TICKET_PRIORITIES } from '../../shared/types.js';
-import { CATEGORY_LABELS, PRIORITY_LABELS } from '../format.js';
+import type { TicketCatalogs } from '../../shared/types.js';
 
 interface NewTicketModalProps {
   open: boolean;
   pending: boolean;
+  catalogs: TicketCatalogs;
   onClose: () => void;
   onCreate: (input: CreateTicketInput) => void;
 }
 
-const EMPTY_TICKET: CreateTicketInput = {
-  title: '',
-  description: '',
-  status: 'open',
-  priority: 'medium',
-  category: 'other',
-};
+interface TicketForm {
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  category: string;
+}
 
-export function NewTicketModal({ open, pending, onClose, onCreate }: NewTicketModalProps) {
-  const [form, setForm] = useState<CreateTicketInput>(EMPTY_TICKET);
+function defaultCode(items: TicketCatalogs['priorities']): string {
+  return items.find((item) => item.is_default)?.code ?? '';
+}
+
+function emptyTicket(catalogs: TicketCatalogs): TicketForm {
+  return {
+    title: '',
+    description: '',
+    status: defaultCode(catalogs.statuses),
+    priority: defaultCode(catalogs.priorities),
+    category: defaultCode(catalogs.categories),
+  };
+}
+
+export function NewTicketModal({ open, pending, catalogs, onClose, onCreate }: NewTicketModalProps) {
+  const [form, setForm] = useState<TicketForm>(() => emptyTicket(catalogs));
   const [errors, setErrors] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    if (!open) return;
+    setForm(emptyTicket(catalogs));
+    setErrors({});
+  }, [open, catalogs]);
 
   useEffect(() => {
     if (!open) return;
@@ -67,15 +87,17 @@ export function NewTicketModal({ open, pending, onClose, onCreate }: NewTicketMo
           <div className="form-row">
             <label className="form-field">
               <span>Priority</span>
-              <select value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value as CreateTicketInput['priority'] })}>
-                {TICKET_PRIORITIES.map((priority) => <option key={priority} value={priority}>{PRIORITY_LABELS[priority]}</option>)}
+              <select value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })}>
+                {catalogs.priorities.map((priority) => <option key={priority.code} value={priority.code}>{priority.label}</option>)}
               </select>
+              {errors.priority?.[0] && <small className="field-error">{errors.priority[0]}</small>}
             </label>
             <label className="form-field">
               <span>Category</span>
-              <select value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value as CreateTicketInput['category'] })}>
-                {TICKET_CATEGORIES.map((category) => <option key={category} value={category}>{CATEGORY_LABELS[category]}</option>)}
+              <select value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })}>
+                {catalogs.categories.map((category) => <option key={category.code} value={category.code}>{category.label}</option>)}
               </select>
+              {errors.category?.[0] && <small className="field-error">{errors.category[0]}</small>}
             </label>
           </div>
           <footer className="modal__actions">

@@ -3,7 +3,13 @@ import type {
   CreateTicketInput,
   UpdateStatusInput,
 } from '../shared/schemas.js';
-import type { ApiErrorBody, Ticket, TicketDetail, TicketMessage } from '../shared/types.js';
+import type {
+  ApiErrorBody,
+  Ticket,
+  TicketCatalogs,
+  TicketDetail,
+  TicketMessage,
+} from '../shared/types.js';
 
 export class ApiClientError extends Error {
   constructor(
@@ -39,6 +45,10 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const ticketApi = {
+  async catalogs(): Promise<TicketCatalogs> {
+    const response = await apiRequest<{ catalogs: TicketCatalogs }>('/api/ticket-catalogs');
+    return response.catalogs;
+  },
   async list(): Promise<Ticket[]> {
     const response = await apiRequest<{ tickets: Ticket[] }>('/api/tickets');
     return response.tickets;

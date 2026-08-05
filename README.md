@@ -8,8 +8,8 @@ An internal support-ticket Kanban built with React, TypeScript, Vite, Express, a
 - Pointer and keyboard drag-and-drop, plus an accessible status selector
 - Ticket creation, conversations, priorities, categories, filtering, and statistics
 - Automatic authorship from the Databricks user email
-- Confirmed deletion for archived tickets only; related messages are removed by the database foreign-key cascade
-- Shared Zod validation and success/error toast notifications
+- Confirmed deletion for statuses configured to allow it (archived by default); related messages are removed by the database foreign-key cascade
+- Database-backed status, priority, and category dimensions with shared structural validation
 - Idempotent schema migrations and sample data
 
 There is intentionally no endpoint or UI control for deleting individual messages.
@@ -51,6 +51,11 @@ The server runs all unapplied SQL migrations on startup. They can also be run ex
 
 Both providers use the same `support_board` schema, migrations, repository, and API.
 
+Tickets store foreign keys to `dim_ticket_status`, `dim_ticket_priority`, and
+`dim_ticket_category`. The dimensions own catalog labels, ordering, defaults,
+status progress, and deletion policy; API payloads continue to expose their
+stable string codes rather than internal numeric IDs.
+
 ## Databricks Apps deployment
 
 1. In Free Edition, create or open the Lakebase project and keep PostgreSQL 17 with its production branch/database.
@@ -75,6 +80,7 @@ After deployment, verify this sequence and refresh the App after every mutation:
 | Method | Route | Purpose |
 | --- | --- | --- |
 | `GET` | `/api/health` | Database readiness |
+| `GET` | `/api/ticket-catalogs` | Database-backed ticket catalogs |
 | `GET` | `/api/tickets` | List tickets and message counts |
 | `GET` | `/api/tickets/:ticketId` | Ticket detail and messages |
 | `POST` | `/api/tickets` | Create a ticket |

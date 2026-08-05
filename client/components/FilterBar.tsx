@@ -1,20 +1,17 @@
 import { Filter, RefreshCw, Search, X } from 'lucide-react';
-import {
-  TICKET_CATEGORIES,
-  TICKET_PRIORITIES,
-} from '../../shared/types.js';
+import type { TicketCatalogs } from '../../shared/types.js';
 import { EMPTY_FILTERS, type TicketFilters } from '../filter-types.js';
-import { CATEGORY_LABELS, PRIORITY_LABELS } from '../format.js';
 
 interface FilterBarProps {
   filters: TicketFilters;
+  catalogs: TicketCatalogs;
   onChange: (filters: TicketFilters) => void;
   resultCount: number;
   onRefresh: () => void;
   refreshing: boolean;
 }
 
-export function FilterBar({ filters, onChange, resultCount, onRefresh, refreshing }: FilterBarProps) {
+export function FilterBar({ filters, catalogs, onChange, resultCount, onRefresh, refreshing }: FilterBarProps) {
   const isFiltered = JSON.stringify(filters) !== JSON.stringify(EMPTY_FILTERS);
   const update = <K extends keyof TicketFilters>(key: K, value: TicketFilters[K]) => {
     onChange({ ...filters, [key]: value });
@@ -47,14 +44,14 @@ export function FilterBar({ filters, onChange, resultCount, onRefresh, refreshin
           <span className="sr-only">Filter by priority</span>
           <select value={filters.priority} onChange={(event) => update('priority', event.target.value as TicketFilters['priority'])}>
             <option value="all">All priorities</option>
-            {TICKET_PRIORITIES.map((priority) => <option key={priority} value={priority}>{PRIORITY_LABELS[priority]}</option>)}
+            {catalogs.priorities.map((priority) => <option key={priority.code} value={priority.code}>{priority.label}</option>)}
           </select>
         </label>
         <label>
           <span className="sr-only">Filter by category</span>
           <select value={filters.category} onChange={(event) => update('category', event.target.value as TicketFilters['category'])}>
             <option value="all">All categories</option>
-            {TICKET_CATEGORIES.map((category) => <option key={category} value={category}>{CATEGORY_LABELS[category]}</option>)}
+            {catalogs.categories.map((category) => <option key={category.code} value={category.code}>{category.label}</option>)}
           </select>
         </label>
       </div>

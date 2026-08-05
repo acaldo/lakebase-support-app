@@ -91,6 +91,7 @@ main { max-width: 1500px; padding: 24px 22px 42px; margin: 0 auto; }
 .kanban-column--in_progress .status-dot { background: #e8a223; box-shadow: 0 0 0 4px rgba(232,162,35,.14); }
 .kanban-column--resolved .status-dot { background: #2ba673; box-shadow: 0 0 0 4px rgba(43,166,115,.14); }
 .kanban-column--archived .status-dot { background: #7a8395; box-shadow: 0 0 0 4px rgba(122,131,149,.16); }
+.kanban-column--default .status-dot { background: #7a8395; box-shadow: 0 0 0 4px rgba(122,131,149,.16); }
 .column-count { margin-left: auto; background: #fff; color: #737a8d; border: 1px solid #e0e3ea; border-radius: 20px; min-width: 22px; height: 22px; display: grid; place-items: center; font-size: 11px; font-weight: 700; }
 .column-toggle__icon { color: #8a91a1; transition: transform .18s ease-out; }
 .kanban-column.is-collapsed .column-toggle__icon { transform: rotate(-90deg); }
@@ -117,6 +118,7 @@ main { max-width: 1500px; padding: 24px 22px 42px; margin: 0 auto; }
 .priority-badge--medium { background: #e9f0ff; color: #315bc5; }
 .priority-badge--high { background: #fff0d6; color: #a36100; }
 .priority-badge--urgent { background: #ffe7eb; color: #bf3447; }
+.priority-badge--default { background: #eef0f4; color: #667085; }
 .category-label { background: #f1f2f6; color: #666e81; }
 .ticket-card__meta { display: flex; justify-content: space-between; align-items: center; margin: 9px 0 8px; padding-bottom: 8px; border-bottom: 1px solid #eff0f4; color: #6d798e; font: 600 9px/1.2 Inter, sans-serif; text-transform: uppercase; letter-spacing: .3px; }
 .ticket-card__meta span { display: inline-flex; align-items: center; gap: 5px; }
@@ -128,6 +130,7 @@ main { max-width: 1500px; padding: 24px 22px 42px; margin: 0 auto; }
 .ticket-card__progress--in_progress span { background: linear-gradient(90deg, #ffd27a, #f4a261, #ee7f9d); }
 .ticket-card__progress--resolved span { background: linear-gradient(90deg, #8adab4, #36bb9d, #1b9c9a); }
 .ticket-card__progress--archived span { background: #7a8395; }
+.ticket-card__progress--default span { background: #7a8395; }
 
 .modal-backdrop, .drawer-backdrop { position: fixed; inset: 0; z-index: 50; background: rgba(19,25,43,.48); backdrop-filter: blur(4px); display: grid; place-items: center; padding: 20px; animation: fade-in .18s ease-out; }
 .modal { width: min(560px, 100%); max-height: calc(100vh - 40px); overflow: auto; background: #fff; border-radius: 18px; box-shadow: var(--shadow); animation: modal-in .2s ease-out; }

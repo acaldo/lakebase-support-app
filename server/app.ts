@@ -7,7 +7,7 @@ import {
   createTicketSchema,
   updateStatusSchema,
 } from '../shared/schemas.js';
-import type { TicketRepository } from './ticket-repository.js';
+import { CatalogValidationError, type TicketRepository } from './ticket-repository.js';
 
 interface AppDependencies {
   repository: TicketRepository;
@@ -68,6 +68,10 @@ export function createApp(dependencies: AppDependencies) {
     response.json({ tickets: await dependencies.repository.listTickets() });
   }));
 
+  app.get('/api/ticket-catalogs', asyncRoute(async (_request, response) => {
+    response.json({ catalogs: await dependencies.repository.getTicketCatalogs() });
+  }));
+
   app.get('/api/tickets/:ticketId', asyncRoute(async (request, response) => {
     const ticket = await dependencies.repository.getTicket(String(request.params.ticketId));
     if (!ticket) throw notFound('Ticket not found.');
@@ -104,7 +108,7 @@ export function createApp(dependencies: AppDependencies) {
   app.delete('/api/tickets/:ticketId', asyncRoute(async (request, response) => {
     const result = await dependencies.repository.deleteTicket(String(request.params.ticketId));
     if (result === 'not_found') throw notFound('Ticket not found.');
-    if (result === 'not_archived') throw conflict('Only archived tickets can be deleted.');
+    if (result === 'not_deletable') throw conflict('The current ticket status does not allow deletion.');
     response.status(204).send();
   }));
 
@@ -123,6 +127,17 @@ export function createApp(dependencies: AppDependencies) {
   }
 
   app.use((error: ApiError | ZodError, _request: Request, response: Response, _next: NextFunction) => {
+    if (error instanceof CatalogValidationError) {
+      response.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: error.message,
+          fieldErrors: error.fieldErrors,
+        },
+      });
+      return;
+    }
+
     if (error instanceof ZodError) {
       response.status(400).json({
         error: {

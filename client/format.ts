@@ -1,25 +1,16 @@
-import type { TicketCategory, TicketPriority, TicketStatus } from '../shared/types.js';
+import type { TicketCatalogItem } from '../shared/types.js';
 
-export const STATUS_LABELS: Record<TicketStatus, string> = {
-  open: 'Open',
-  in_progress: 'In progress',
-  resolved: 'Resolved',
-  archived: 'Archived',
-};
+export function catalogLabel(items: TicketCatalogItem[], code: string): string {
+  return items.find((item) => item.code === code)?.label ?? code;
+}
 
-export const PRIORITY_LABELS: Record<TicketPriority, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
-};
+export function catalogStyleModifier(code: string, styledCodes: readonly string[]): string {
+  return styledCodes.includes(code) ? code : 'default';
+}
 
-export const CATEGORY_LABELS: Record<TicketCategory, string> = {
-  access: 'Access',
-  software: 'Software',
-  hardware: 'Hardware',
-  other: 'Other',
-};
+export function domToken(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, '-');
+}
 
 export function formatDate(value: string): string {
   return new Intl.DateTimeFormat('en', {

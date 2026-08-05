@@ -19,11 +19,23 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { CalendarDays, ChevronDown, GripVertical, MessageCircle, Trash2 } from 'lucide-react';
-import { TICKET_STATUSES, type Ticket, type TicketStatus } from '../../shared/types.js';
-import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS, formatDate, initials } from '../format.js';
+import type {
+  Ticket,
+  TicketCatalogs,
+  TicketStatus,
+  TicketStatusCatalogItem,
+} from '../../shared/types.js';
+import {
+  catalogLabel,
+  catalogStyleModifier,
+  domToken,
+  formatDate,
+  initials,
+} from '../format.js';
 
 interface KanbanBoardProps {
   tickets: Ticket[];
+  catalogs: TicketCatalogs;
   onSelect: (ticketId: string) => void;
   onStatusChange: (ticketId: string, status: TicketStatus) => void;
   onDeleteRequest: (ticket: Ticket) => void;
@@ -32,25 +44,33 @@ interface KanbanBoardProps {
 
 interface TicketCardProps {
   ticket: Ticket;
+  catalogs: TicketCatalogs;
   onSelect?: (ticketId: string) => void;
   overlay?: boolean;
   disabled?: boolean;
   onDeleteRequest?: (ticket: Ticket) => void;
 }
 
-const STATUS_PROGRESS: Record<TicketStatus, number> = {
-  open: 28,
-  in_progress: 64,
-  resolved: 100,
-  archived: 100,
-};
+const STYLED_STATUSES = ['open', 'in_progress', 'resolved', 'archived'] as const;
+const STYLED_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 
-function TicketCard({ ticket, onSelect, onDeleteRequest, overlay = false, disabled = false }: TicketCardProps) {
+function TicketCard({
+  ticket,
+  catalogs,
+  onSelect,
+  onDeleteRequest,
+  overlay = false,
+  disabled = false,
+}: TicketCardProps) {
   const sortable = useSortable({
     id: `ticket:${ticket.ticket_id}`,
     data: { type: 'ticket', ticket, status: ticket.status },
     disabled: overlay || disabled,
   });
+  const statusCatalog = catalogs.statuses.find((status) => status.code === ticket.status);
+  const progressPercent = statusCatalog?.progress_percent ?? 0;
+  const statusStyle = catalogStyleModifier(ticket.status, STYLED_STATUSES);
+  const priorityStyle = catalogStyleModifier(ticket.priority, STYLED_PRIORITIES);
   const style = overlay
     ? undefined
     : { transform: CSS.Transform.toString(sortable.transform), transition: sortable.transition };
@@ -64,15 +84,17 @@ function TicketCard({ ticket, onSelect, onDeleteRequest, overlay = false, disabl
       data-testid={`ticket-card-${ticket.ticket_id}`}
     >
       <div className="ticket-card__topline">
-        <span className={`priority-badge priority-badge--${ticket.priority}`}>{PRIORITY_LABELS[ticket.priority]}</span>
+        <span className={`priority-badge priority-badge--${priorityStyle}`}>
+          {catalogLabel(catalogs.priorities, ticket.priority)}
+        </span>
         {!overlay && (
           <div className="ticket-card__actions">
-            {ticket.status === 'archived' && onDeleteRequest && (
+            {statusCatalog?.allows_deletion && onDeleteRequest && (
               <button
                 className="delete-ticket-button"
                 type="button"
                 aria-label={`Delete ${ticket.title}`}
-                title="Delete archived ticket"
+                title="Delete ticket"
                 onClick={(event) => { event.stopPropagation(); onDeleteRequest(ticket); }}
               >
                 <Trash2 size={16} />
@@ -93,7 +115,7 @@ function TicketCard({ ticket, onSelect, onDeleteRequest, overlay = false, disabl
       </div>
       <h3>{ticket.title}</h3>
       {ticket.description && <p>{ticket.description}</p>}
-      <span className="category-label">{CATEGORY_LABELS[ticket.category]}</span>
+      <span className="category-label">{catalogLabel(catalogs.categories, ticket.category)}</span>
       <div className="ticket-card__meta">
         <span><CalendarDays size={14} /> {formatDate(ticket.created_at)}</span>
         <span><MessageCircle size={14} /> {ticket.message_count}</span>
@@ -103,21 +125,21 @@ function TicketCard({ ticket, onSelect, onDeleteRequest, overlay = false, disabl
         <span>{ticket.created_by}</span>
       </div>
       <div
-        className={`ticket-card__progress ticket-card__progress--${ticket.status}`}
+        className={`ticket-card__progress ticket-card__progress--${statusStyle}`}
         role="progressbar"
-        aria-label={`${STATUS_PROGRESS[ticket.status]}% complete`}
+        aria-label={`${progressPercent}% complete`}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={STATUS_PROGRESS[ticket.status]}
+        aria-valuenow={progressPercent}
       >
-        <span style={{ width: `${STATUS_PROGRESS[ticket.status]}%` }} />
+        <span style={{ width: `${progressPercent}%` }} />
       </div>
     </article>
   );
 }
 
 interface KanbanColumnProps {
-  status: TicketStatus;
+  status: TicketStatusCatalogItem;
   tickets: Ticket[];
   children: React.ReactNode;
   collapsed: boolean;
@@ -125,25 +147,33 @@ interface KanbanColumnProps {
 }
 
 function KanbanColumn({ status, tickets, children, collapsed, onToggle }: KanbanColumnProps) {
-  const droppable = useDroppable({ id: `column:${status}`, data: { type: 'column', status } });
+  const droppable = useDroppable({
+    id: `column:${status.code}`,
+    data: { type: 'column', status: status.code },
+  });
+  const statusToken = domToken(status.code);
+  const statusStyle = catalogStyleModifier(status.code, STYLED_STATUSES);
   return (
-    <section className={`kanban-column kanban-column--${status} ${collapsed ? 'is-collapsed' : ''}`} aria-labelledby={`heading-${status}`}>
+    <section
+      className={`kanban-column kanban-column--${statusStyle} ${collapsed ? 'is-collapsed' : ''}`}
+      aria-labelledby={`heading-${statusToken}`}
+    >
       <header>
         <button
           className="column-toggle"
           type="button"
           aria-expanded={!collapsed}
-          aria-controls={`column-body-${status}`}
+          aria-controls={`column-body-${statusToken}`}
           onClick={onToggle}
         >
           <span className="status-dot" aria-hidden="true" />
-          <h2 id={`heading-${status}`}>{STATUS_LABELS[status]}</h2>
+          <h2 id={`heading-${statusToken}`}>{status.label}</h2>
           <span className="column-count">{tickets.length}</span>
           <ChevronDown className="column-toggle__icon" size={17} aria-hidden="true" />
         </button>
       </header>
       <div
-        id={`column-body-${status}`}
+        id={`column-body-${statusToken}`}
         ref={droppable.setNodeRef}
         className={`kanban-column__body ${droppable.isOver ? 'is-over' : ''}`}
         hidden={collapsed}
@@ -161,21 +191,26 @@ function KanbanColumn({ status, tickets, children, collapsed, onToggle }: Kanban
   );
 }
 
-export function KanbanBoard({ tickets, onSelect, onStatusChange, onDeleteRequest, statusChangePending }: KanbanBoardProps) {
+export function KanbanBoard({
+  tickets,
+  catalogs,
+  onSelect,
+  onStatusChange,
+  onDeleteRequest,
+  statusChangePending,
+}: KanbanBoardProps) {
   const [activeTicket, setActiveTicket] = useState<Ticket | null>(null);
-  const [collapsedColumns, setCollapsedColumns] = useState<Record<TicketStatus, boolean>>({
-    open: false,
-    in_progress: false,
-    resolved: false,
-    archived: false,
-  });
+  const [collapsedColumns, setCollapsedColumns] = useState<Record<string, boolean>>({});
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const grouped = useMemo(() => Object.fromEntries(
-    TICKET_STATUSES.map((status) => [status, tickets.filter((ticket) => ticket.status === status)]),
-  ) as Record<TicketStatus, Ticket[]>, [tickets]);
+    catalogs.statuses.map((status) => [
+      status.code,
+      tickets.filter((ticket) => ticket.status === status.code),
+    ]),
+  ) as Record<string, Ticket[]>, [catalogs.statuses, tickets]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveTicket((event.active.data.current?.ticket as Ticket | undefined) ?? null);
@@ -204,17 +239,21 @@ export function KanbanBoard({ tickets, onSelect, onStatusChange, onDeleteRequest
       }}
     >
       <section className="kanban-board" aria-label="Support ticket board">
-        {TICKET_STATUSES.map((status) => (
+        {catalogs.statuses.map((status) => (
           <KanbanColumn
             status={status}
-            tickets={grouped[status]}
-            key={status}
-            collapsed={collapsedColumns[status]}
-            onToggle={() => setCollapsedColumns((current) => ({ ...current, [status]: !current[status] }))}
+            tickets={grouped[status.code] ?? []}
+            key={status.code}
+            collapsed={collapsedColumns[status.code] ?? false}
+            onToggle={() => setCollapsedColumns((current) => ({
+              ...current,
+              [status.code]: !(current[status.code] ?? false),
+            }))}
           >
-            {grouped[status].map((ticket) => (
+            {(grouped[status.code] ?? []).map((ticket) => (
               <TicketCard
                 ticket={ticket}
+                catalogs={catalogs}
                 key={ticket.ticket_id}
                 onSelect={onSelect}
                 onDeleteRequest={onDeleteRequest}
@@ -224,7 +263,9 @@ export function KanbanBoard({ tickets, onSelect, onStatusChange, onDeleteRequest
           </KanbanColumn>
         ))}
       </section>
-      <DragOverlay>{activeTicket ? <TicketCard ticket={activeTicket} overlay /> : null}</DragOverlay>
+      <DragOverlay>
+        {activeTicket ? <TicketCard ticket={activeTicket} catalogs={catalogs} overlay /> : null}
+      </DragOverlay>
     </DndContext>
   );
 }

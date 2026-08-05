@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Headphones, Plus, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 import type { CreateTicketInput } from '../shared/schemas.js';
-import type { Ticket, TicketStatus } from '../shared/types.js';
+import type { Ticket, TicketCatalogs, TicketStatus } from '../shared/types.js';
 import { ticketApi } from './api.js';
 import { FilterBar } from './components/FilterBar.js';
 import { EMPTY_FILTERS, type TicketFilters } from './filter-types.js';
@@ -11,6 +11,13 @@ import { KanbanBoard } from './components/KanbanBoard.js';
 import { NewTicketModal } from './components/NewTicketModal.js';
 import { TicketDetails } from './components/TicketDetails.js';
 import { ConfirmDialog } from './components/ConfirmDialog.js';
+import { catalogLabel } from './format.js';
+
+const EMPTY_CATALOGS: TicketCatalogs = {
+  statuses: [],
+  priorities: [],
+  categories: [],
+};
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
@@ -26,6 +33,10 @@ export default function App() {
   const ticketsQuery = useQuery({
     queryKey: ['tickets'],
     queryFn: ticketApi.list,
+  });
+  const catalogsQuery = useQuery({
+    queryKey: ['ticket-catalogs'],
+    queryFn: ticketApi.catalogs,
   });
   const detailQuery = useQuery({
     queryKey: ['ticket', selectedTicketId],
@@ -93,16 +104,26 @@ export default function App() {
   });
 
   const tickets = useMemo(() => ticketsQuery.data ?? [], [ticketsQuery.data]);
+  const catalogs = catalogsQuery.data ?? EMPTY_CATALOGS;
   const filteredTickets = useMemo(() => {
     const query = filters.search.trim().toLowerCase();
     return tickets.filter((ticket) => {
-      const matchesSearch = !query || [ticket.title, ticket.description, ticket.created_by, ticket.category]
+      const matchesSearch = !query || [
+        ticket.title,
+        ticket.description,
+        ticket.created_by,
+        ticket.category,
+        catalogLabel(catalogs.categories, ticket.category),
+      ]
         .some((value) => value.toLowerCase().includes(query));
       return matchesSearch
         && (filters.priority === 'all' || ticket.priority === filters.priority)
         && (filters.category === 'all' || ticket.category === filters.category);
     });
-  }, [tickets, filters]);
+  }, [tickets, filters, catalogs.categories]);
+
+  const boardLoading = ticketsQuery.isLoading || catalogsQuery.isLoading;
+  const boardError = ticketsQuery.error ?? catalogsQuery.error;
 
   return (
     <div className="app-shell">
@@ -111,28 +132,41 @@ export default function App() {
           <span className="brand-mark"><Headphones /></span>
           <div><strong>Support Board</strong><span>Lakebase operations</span></div>
         </div>
-        <button className="button button--primary" onClick={() => setNewTicketOpen(true)}><Plus size={18} /> New ticket</button>
+        <button
+          className="button button--primary"
+          onClick={() => setNewTicketOpen(true)}
+          disabled={!catalogsQuery.data}
+        >
+          <Plus size={18} /> New ticket
+        </button>
       </header>
 
       <main>
         <FilterBar
           filters={filters}
+          catalogs={catalogs}
           onChange={setFilters}
           resultCount={filteredTickets.length}
-          onRefresh={() => void ticketsQuery.refetch()}
-          refreshing={ticketsQuery.isFetching}
+          onRefresh={() => void Promise.all([ticketsQuery.refetch(), catalogsQuery.refetch()])}
+          refreshing={ticketsQuery.isFetching || catalogsQuery.isFetching}
         />
 
-        {ticketsQuery.isLoading ? (
+        {boardLoading ? (
           <div className="board-state"><span className="spinner" /><strong>Loading your support board...</strong></div>
-        ) : ticketsQuery.isError ? (
+        ) : boardError ? (
           <div className="board-state board-state--error">
-            <WifiOff size={32} /><strong>We couldn't load the tickets.</strong><p>{errorMessage(ticketsQuery.error)}</p>
-            <button className="button button--secondary" onClick={() => void ticketsQuery.refetch()}>Try again</button>
+            <WifiOff size={32} /><strong>We couldn't load the support board.</strong><p>{errorMessage(boardError)}</p>
+            <button
+              className="button button--secondary"
+              onClick={() => void Promise.all([ticketsQuery.refetch(), catalogsQuery.refetch()])}
+            >
+              Try again
+            </button>
           </div>
         ) : (
           <KanbanBoard
             tickets={filteredTickets}
+            catalogs={catalogs}
             onSelect={setSelectedTicketId}
             onStatusChange={(ticketId, status) => statusMutation.mutate({ ticketId, status })}
             onDeleteRequest={setDeleteTarget}
@@ -144,12 +178,14 @@ export default function App() {
       <NewTicketModal
         open={newTicketOpen}
         pending={createMutation.isPending}
+        catalogs={catalogs}
         onClose={() => setNewTicketOpen(false)}
         onCreate={(input: CreateTicketInput) => createMutation.mutate(input)}
       />
       {selectedTicketId && (
         <TicketDetails
           ticket={detailQuery.data}
+          catalogs={catalogs}
           loading={detailQuery.isLoading}
           statusPending={statusMutation.isPending}
           messagePending={messageMutation.isPending}

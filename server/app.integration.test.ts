@@ -34,11 +34,108 @@ integrationSuite('Support Board API with PostgreSQL 17', () => {
 
   it('loads the required idempotent sample data', async () => {
     await runMigrations(pool, schema);
-    const response = await request(app).get('/api/tickets').expect(200);
+    const [ticketsResponse, catalogsResponse] = await Promise.all([
+      request(app).get('/api/tickets').expect(200),
+      request(app).get('/api/ticket-catalogs').expect(200),
+    ]);
 
-    expect(response.body.tickets).toHaveLength(4);
-    expect(new Set(response.body.tickets.map((ticket: any) => ticket.status)).size).toBeGreaterThanOrEqual(2);
-    expect(response.body.tickets.every((ticket: any) => ticket.message_count >= 2)).toBe(true);
+    expect(ticketsResponse.body.tickets).toHaveLength(4);
+    expect(new Set(ticketsResponse.body.tickets.map((ticket: any) => ticket.status)).size).toBeGreaterThanOrEqual(2);
+    expect(ticketsResponse.body.tickets.every((ticket: any) => ticket.message_count >= 2)).toBe(true);
+    expect(ticketsResponse.body.tickets.map((ticket: any) => ticket.priority)).toEqual([
+      'urgent',
+      'high',
+      'medium',
+      'low',
+    ]);
+    expect(catalogsResponse.body.catalogs.statuses.map((item: any) => item.code)).toEqual([
+      'open',
+      'in_progress',
+      'resolved',
+      'archived',
+    ]);
+    expect(catalogsResponse.body.catalogs.priorities.map((item: any) => item.code)).toEqual([
+      'urgent',
+      'high',
+      'medium',
+      'low',
+    ]);
+    expect(catalogsResponse.body.catalogs.statuses.find((item: any) => item.code === 'open')).toMatchObject({
+      is_default: true,
+      progress_percent: 28,
+      allows_deletion: false,
+    });
+  });
+
+  it('uses dimension foreign keys without catalog check constraints', async () => {
+    const columns = await pool.query(
+      `SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = $1 AND table_name = 'tickets'`,
+      [schema],
+    );
+    const columnNames = columns.rows.map((row) => row.column_name);
+    expect(columnNames).toEqual(expect.arrayContaining(['status_id', 'priority_id', 'category_id']));
+    expect(columnNames).not.toEqual(expect.arrayContaining(['status', 'priority', 'category']));
+
+    const constraints = await pool.query(
+      `SELECT contype, pg_get_constraintdef(oid) AS definition
+       FROM pg_constraint
+       WHERE conrelid = to_regclass($1)`,
+      [`${schema}.tickets`],
+    );
+    expect(constraints.rows.filter((row) => row.contype === 'f')).toHaveLength(3);
+    const ticketChecks = constraints.rows
+      .filter((row) => row.contype === 'c')
+      .map((row) => row.definition);
+    expect(ticketChecks).toHaveLength(2);
+    expect(ticketChecks.join(' ')).toContain('char_length');
+    expect(ticketChecks.join(' ')).not.toContain('status');
+    expect(ticketChecks.join(' ')).not.toContain('priority');
+    expect(ticketChecks.join(' ')).not.toContain('category');
+
+    const messageChecks = await pool.query(
+      `SELECT pg_get_constraintdef(oid) AS definition
+       FROM pg_constraint
+       WHERE conrelid = to_regclass($1) AND contype = 'c'`,
+      [`${schema}.ticket_messages`],
+    );
+    expect(messageChecks.rows.some((row) => row.definition.includes('char_length'))).toBe(true);
+  });
+
+  it('accepts a new database catalog value without application code changes', async () => {
+    await pool.query(
+      `INSERT INTO "${schema}".dim_ticket_status
+        (code, label, sort_order, progress_percent, allows_deletion)
+       VALUES ('waiting_for_customer', 'Waiting for customer', 25, 75, FALSE)`,
+    );
+
+    await request(app)
+      .get('/api/ticket-catalogs')
+      .expect(200)
+      .expect((response) => {
+        expect(response.body.catalogs.statuses).toContainEqual(expect.objectContaining({
+          code: 'waiting_for_customer',
+          label: 'Waiting for customer',
+          progress_percent: 75,
+        }));
+      });
+
+    const created = await request(app)
+      .post('/api/tickets')
+      .send({ title: 'Customer confirmation required' })
+      .expect(201);
+    expect(created.body.ticket).toMatchObject({
+      status: 'open',
+      priority: 'medium',
+      category: 'other',
+    });
+
+    await request(app)
+      .patch(`/api/tickets/${created.body.ticket.ticket_id}/status`)
+      .send({ status: 'waiting_for_customer' })
+      .expect(200)
+      .expect((response) => expect(response.body.ticket.status).toBe('waiting_for_customer'));
   });
 
   it('creates, reads, updates, messages, and deletes a ticket with cascading messages', async () => {
@@ -96,6 +193,21 @@ integrationSuite('Support Board API with PostgreSQL 17', () => {
         expect(response.body.error.code).toBe('VALIDATION_ERROR');
         expect(response.body.error.fieldErrors.title).toBeDefined();
       });
+
+    await request(app)
+      .post('/api/tickets')
+      .send({ title: 'Valid ticket title', priority: 'impossible' })
+      .expect(400)
+      .expect((response) => {
+        expect(response.body.error.code).toBe('VALIDATION_ERROR');
+        expect(response.body.error.fieldErrors.priority).toBeDefined();
+      });
+
+    await request(app)
+      .patch('/api/tickets/1/status')
+      .send({ status: 'does_not_exist' })
+      .expect(400)
+      .expect((response) => expect(response.body.error.fieldErrors.status).toBeDefined());
 
     await request(app).post('/api/tickets/999999999/messages').send({ message_text: 'Hello' }).expect(404);
     await request(app).delete('/api/tickets/1/messages/1').expect(404);

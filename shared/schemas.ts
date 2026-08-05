@@ -1,12 +1,17 @@
 import { z } from 'zod';
-import { TICKET_CATEGORIES, TICKET_PRIORITIES, TICKET_STATUSES } from './types.js';
+
+export const ticketCatalogCodeSchema = z.string()
+  .trim()
+  .min(1, 'A catalog code is required.')
+  .max(40, 'Catalog codes cannot exceed 40 characters.')
+  .regex(/^[a-z][a-z0-9_]*$/, 'Catalog codes must use lowercase letters, numbers, and underscores.');
 
 export const createTicketSchema = z.object({
   title: z.string().trim().min(3, 'Title must contain at least 3 characters.').max(120),
   description: z.string().trim().max(2000).default(''),
-  status: z.enum(TICKET_STATUSES).default('open'),
-  priority: z.enum(TICKET_PRIORITIES).default('medium'),
-  category: z.enum(TICKET_CATEGORIES).default('other'),
+  status: ticketCatalogCodeSchema.optional(),
+  priority: ticketCatalogCodeSchema.optional(),
+  category: ticketCatalogCodeSchema.optional(),
 });
 
 export const createMessageSchema = z.object({
@@ -14,7 +19,7 @@ export const createMessageSchema = z.object({
 });
 
 export const updateStatusSchema = z.object({
-  status: z.enum(TICKET_STATUSES),
+  status: ticketCatalogCodeSchema,
 });
 
 export type CreateTicketInput = z.infer<typeof createTicketSchema>;

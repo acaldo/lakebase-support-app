@@ -1,10 +1,24 @@
-export const TICKET_STATUSES = ['open', 'in_progress', 'resolved', 'archived'] as const;
-export const TICKET_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
-export const TICKET_CATEGORIES = ['access', 'software', 'hardware', 'other'] as const;
+export type TicketStatus = string;
+export type TicketPriority = string;
+export type TicketCategory = string;
 
-export type TicketStatus = (typeof TICKET_STATUSES)[number];
-export type TicketPriority = (typeof TICKET_PRIORITIES)[number];
-export type TicketCategory = (typeof TICKET_CATEGORIES)[number];
+export interface TicketCatalogItem {
+  code: string;
+  label: string;
+  sort_order: number;
+  is_default: boolean;
+}
+
+export interface TicketStatusCatalogItem extends TicketCatalogItem {
+  progress_percent: number;
+  allows_deletion: boolean;
+}
+
+export interface TicketCatalogs {
+  statuses: TicketStatusCatalogItem[];
+  priorities: TicketCatalogItem[];
+  categories: TicketCatalogItem[];
+}
 
 export interface Ticket {
   ticket_id: string;
