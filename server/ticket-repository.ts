@@ -115,11 +115,19 @@ export class TicketRepository {
     return result.rowCount ? serializeTicket(result.rows[0]) : null;
   }
 
-  async deleteTicket(ticketId: string): Promise<boolean> {
+  async deleteTicket(ticketId: string): Promise<'deleted' | 'not_found' | 'not_archived'> {
     const result = await this.pool.query(
-      `DELETE FROM ${this.schema}.tickets WHERE ticket_id = $1 RETURNING ticket_id`,
+      `DELETE FROM ${this.schema}.tickets
+       WHERE ticket_id = $1 AND status = 'archived'
+       RETURNING ticket_id`,
       [ticketId],
     );
-    return Boolean(result.rowCount);
+    if (result.rowCount) return 'deleted';
+
+    const existing = await this.pool.query(
+      `SELECT 1 FROM ${this.schema}.tickets WHERE ticket_id = $1`,
+      [ticketId],
+    );
+    return existing.rowCount ? 'not_archived' : 'not_found';
   }
 }

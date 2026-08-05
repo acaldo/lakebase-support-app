@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Headphones, Plus, RefreshCw, WifiOff } from 'lucide-react';
+import { Headphones, Plus, WifiOff } from 'lucide-react';
 import { toast } from 'sonner';
 import type { CreateTicketInput } from '../shared/schemas.js';
 import type { Ticket, TicketStatus } from '../shared/types.js';
@@ -9,8 +9,8 @@ import { FilterBar } from './components/FilterBar.js';
 import { EMPTY_FILTERS, type TicketFilters } from './filter-types.js';
 import { KanbanBoard } from './components/KanbanBoard.js';
 import { NewTicketModal } from './components/NewTicketModal.js';
-import { StatsBar } from './components/StatsBar.js';
 import { TicketDetails } from './components/TicketDetails.js';
+import { ConfirmDialog } from './components/ConfirmDialog.js';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Something went wrong. Please try again.';
@@ -21,6 +21,7 @@ export default function App() {
   const [filters, setFilters] = useState<TicketFilters>(EMPTY_FILTERS);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [newTicketOpen, setNewTicketOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Ticket | null>(null);
 
   const ticketsQuery = useQuery({
     queryKey: ['tickets'],
@@ -83,6 +84,7 @@ export default function App() {
   const deleteMutation = useMutation({
     mutationFn: ticketApi.delete,
     onSuccess: () => {
+      setDeleteTarget(null);
       setSelectedTicketId(null);
       void queryClient.invalidateQueries({ queryKey: ['tickets'] });
       toast.success('Ticket deleted.');
@@ -97,7 +99,6 @@ export default function App() {
       const matchesSearch = !query || [ticket.title, ticket.description, ticket.created_by, ticket.category]
         .some((value) => value.toLowerCase().includes(query));
       return matchesSearch
-        && (filters.status === 'all' || ticket.status === filters.status)
         && (filters.priority === 'all' || ticket.priority === filters.priority)
         && (filters.category === 'all' || ticket.category === filters.category);
     });
@@ -114,15 +115,13 @@ export default function App() {
       </header>
 
       <main>
-        <section className="page-heading">
-          <div><span className="eyebrow">Workspace overview</span><h1>Support tickets</h1><p>Track requests, collaborate with your team, and keep support moving.</p></div>
-          <button className="button button--secondary button--refresh" onClick={() => void ticketsQuery.refetch()} disabled={ticketsQuery.isFetching}>
-            <RefreshCw size={17} className={ticketsQuery.isFetching ? 'spin' : ''} /> Refresh
-          </button>
-        </section>
-
-        <StatsBar tickets={tickets} />
-        <FilterBar filters={filters} onChange={setFilters} resultCount={filteredTickets.length} />
+        <FilterBar
+          filters={filters}
+          onChange={setFilters}
+          resultCount={filteredTickets.length}
+          onRefresh={() => void ticketsQuery.refetch()}
+          refreshing={ticketsQuery.isFetching}
+        />
 
         {ticketsQuery.isLoading ? (
           <div className="board-state"><span className="spinner" /><strong>Loading your support board...</strong></div>
@@ -136,6 +135,7 @@ export default function App() {
             tickets={filteredTickets}
             onSelect={setSelectedTicketId}
             onStatusChange={(ticketId, status) => statusMutation.mutate({ ticketId, status })}
+            onDeleteRequest={setDeleteTarget}
             statusChangePending={statusMutation.isPending}
           />
         )}
@@ -160,6 +160,13 @@ export default function App() {
           onDelete={() => deleteMutation.mutate(selectedTicketId)}
         />
       )}
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        ticketTitle={deleteTarget?.title ?? ''}
+        pending={deleteMutation.isPending}
+        onCancel={() => { if (!deleteMutation.isPending) setDeleteTarget(null); }}
+        onConfirm={() => { if (deleteTarget) deleteMutation.mutate(deleteTarget.ticket_id); }}
+      />
     </div>
   );
 }

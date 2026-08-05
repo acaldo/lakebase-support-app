@@ -117,15 +117,17 @@ export function TicketDetails({
               </form>
             </section>
 
-            <section className="danger-zone">
-              <div>
-                <strong>Delete ticket</strong>
-                <p>Permanently remove this ticket and its conversation.</p>
-              </div>
-              <button className="button button--danger-outline" onClick={() => setConfirmingDelete(true)}>
-                <Trash2 size={17} /> Delete ticket
-              </button>
-            </section>
+            {ticket.status === 'archived' && (
+              <section className="danger-zone">
+                <div>
+                  <strong>Delete ticket</strong>
+                  <p>Permanently remove this archived ticket and its conversation.</p>
+                </div>
+                <button className="button button--danger-outline" onClick={() => setConfirmingDelete(true)}>
+                  <Trash2 size={17} /> Delete ticket
+                </button>
+              </section>
+            )}
             <ConfirmDialog
               open={confirmingDelete}
               ticketTitle={ticket.title}

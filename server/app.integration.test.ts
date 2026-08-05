@@ -36,7 +36,7 @@ integrationSuite('Support Board API with PostgreSQL 17', () => {
     await runMigrations(pool, schema);
     const response = await request(app).get('/api/tickets').expect(200);
 
-    expect(response.body.tickets).toHaveLength(3);
+    expect(response.body.tickets).toHaveLength(4);
     expect(new Set(response.body.tickets.map((ticket: any) => ticket.status)).size).toBeGreaterThanOrEqual(2);
     expect(response.body.tickets.every((ticket: any) => ticket.message_count >= 2)).toBe(true);
   });
@@ -71,6 +71,11 @@ integrationSuite('Support Board API with PostgreSQL 17', () => {
       .expect(200)
       .expect((response) => expect(response.body.ticket.messages).toHaveLength(1));
 
+    await request(app).delete(`/api/tickets/${ticketId}`).expect(409);
+    await request(app)
+      .patch(`/api/tickets/${ticketId}/status`)
+      .send({ status: 'archived' })
+      .expect(200);
     await request(app).delete(`/api/tickets/${ticketId}`).expect(204);
     await request(app).get(`/api/tickets/${ticketId}`).expect(404);
 

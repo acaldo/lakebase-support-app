@@ -1,4 +1,4 @@
-export const TICKET_STATUSES = ['open', 'in_progress', 'resolved'] as const;
+export const TICKET_STATUSES = ['open', 'in_progress', 'resolved', 'archived'] as const;
 export const TICKET_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 export const TICKET_CATEGORIES = ['access', 'software', 'hardware', 'other'] as const;
 

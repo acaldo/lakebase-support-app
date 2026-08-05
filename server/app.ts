@@ -40,6 +40,13 @@ function notFound(message: string): ApiError {
   return error;
 }
 
+function conflict(message: string): ApiError {
+  const error = new Error(message) as ApiError;
+  error.status = 409;
+  error.code = 'INVALID_STATE';
+  return error;
+}
+
 function getAuthor(request: Request, dependencies: AppDependencies): string {
   if (dependencies.provider === 'lakebase') {
     return request.header('x-forwarded-email')?.trim() || 'unknown@databricks.local';
@@ -95,8 +102,9 @@ export function createApp(dependencies: AppDependencies) {
   }));
 
   app.delete('/api/tickets/:ticketId', asyncRoute(async (request, response) => {
-    const deleted = await dependencies.repository.deleteTicket(String(request.params.ticketId));
-    if (!deleted) throw notFound('Ticket not found.');
+    const result = await dependencies.repository.deleteTicket(String(request.params.ticketId));
+    if (result === 'not_found') throw notFound('Ticket not found.');
+    if (result === 'not_archived') throw conflict('Only archived tickets can be deleted.');
     response.status(204).send();
   }));
 

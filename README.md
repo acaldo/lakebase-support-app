@@ -4,11 +4,11 @@ An internal support-ticket Kanban built with React, TypeScript, Vite, Express, a
 
 ## Features
 
-- Three-column Kanban for open, in-progress, and resolved tickets
+- Four-column Kanban for open, in-progress, resolved, and archived tickets
 - Pointer and keyboard drag-and-drop, plus an accessible status selector
 - Ticket creation, conversations, priorities, categories, filtering, and statistics
 - Automatic authorship from the Databricks user email
-- Confirmed ticket deletion; related messages are removed by the database foreign-key cascade
+- Confirmed deletion for archived tickets only; related messages are removed by the database foreign-key cascade
 - Shared Zod validation and success/error toast notifications
 - Idempotent schema migrations and sample data
 
@@ -18,7 +18,7 @@ There is intentionally no endpoint or UI control for deleting individual message
 
 Requirements: Node.js 22.16 or newer and Docker.
 
-Run the complete production-style local stack—both the Node application and PostgreSQL 17 are containerized:
+Run the complete local stack. The Node application, the Vite production build, and PostgreSQL 17 all run through Docker:
 
 ```bash
 docker compose up --build
@@ -26,16 +26,11 @@ docker compose up --build
 
 Open `http://localhost:3001`.
 
-For frontend/backend hot reload, keep only PostgreSQL in Docker and run Node/Vite on the host:
+After source changes, rebuild the application container so the new bundle is served:
 
 ```bash
-cp .env.example .env
-docker compose up -d postgres
-npm install
-npm run dev
+docker compose up -d --build app
 ```
-
-The hot-reload UI is available at `http://localhost:5173`; Vite proxies `/api` to Express on port `3001`.
 
 The PostgreSQL data is stored in the named Docker volume `support_postgres_data`. Rebuilding or restarting either container does not remove tickets:
 
@@ -72,7 +67,7 @@ After deployment, verify this sequence and refresh the App after every mutation:
 2. A new ticket can be created.
 3. A message can be added.
 4. The ticket can move to another status.
-5. A ticket can be deleted only after confirmation.
+5. Only archived tickets can be deleted, and deletion always requires confirmation.
 6. All changes remain after refresh.
 
 ## API
@@ -85,7 +80,7 @@ After deployment, verify this sequence and refresh the App after every mutation:
 | `POST` | `/api/tickets` | Create a ticket |
 | `POST` | `/api/tickets/:ticketId/messages` | Add a message |
 | `PATCH` | `/api/tickets/:ticketId/status` | Update status |
-| `DELETE` | `/api/tickets/:ticketId` | Delete a ticket and cascade its messages |
+| `DELETE` | `/api/tickets/:ticketId` | Delete an archived ticket and cascade its messages |
 
 In Databricks, `created_by` and `author` come from the trusted `X-Forwarded-Email` request header. In local mode the backend ignores that header and uses `LOCAL_DEV_USER`.
 

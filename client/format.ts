@@ -4,6 +4,7 @@ export const STATUS_LABELS: Record<TicketStatus, string> = {
   open: 'Open',
   in_progress: 'In progress',
   resolved: 'Resolved',
+  archived: 'Archived',
 };
 
 export const PRIORITY_LABELS: Record<TicketPriority, string> = {

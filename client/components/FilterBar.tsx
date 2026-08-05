@@ -1,19 +1,20 @@
-import { Filter, Search, X } from 'lucide-react';
+import { Filter, RefreshCw, Search, X } from 'lucide-react';
 import {
   TICKET_CATEGORIES,
   TICKET_PRIORITIES,
-  TICKET_STATUSES,
 } from '../../shared/types.js';
 import { EMPTY_FILTERS, type TicketFilters } from '../filter-types.js';
-import { CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS } from '../format.js';
+import { CATEGORY_LABELS, PRIORITY_LABELS } from '../format.js';
 
 interface FilterBarProps {
   filters: TicketFilters;
   onChange: (filters: TicketFilters) => void;
   resultCount: number;
+  onRefresh: () => void;
+  refreshing: boolean;
 }
 
-export function FilterBar({ filters, onChange, resultCount }: FilterBarProps) {
+export function FilterBar({ filters, onChange, resultCount, onRefresh, refreshing }: FilterBarProps) {
   const isFiltered = JSON.stringify(filters) !== JSON.stringify(EMPTY_FILTERS);
   const update = <K extends keyof TicketFilters>(key: K, value: TicketFilters[K]) => {
     onChange({ ...filters, [key]: value });
@@ -31,14 +32,17 @@ export function FilterBar({ filters, onChange, resultCount }: FilterBarProps) {
         />
       </label>
       <div className="filter-selects">
+        <button
+          className="refresh-icon-button"
+          type="button"
+          aria-label="Refresh tickets"
+          title="Refresh tickets"
+          onClick={onRefresh}
+          disabled={refreshing}
+        >
+          <RefreshCw size={16} className={refreshing ? 'spin' : ''} />
+        </button>
         <Filter size={17} aria-hidden="true" />
-        <label>
-          <span className="sr-only">Filter by status</span>
-          <select value={filters.status} onChange={(event) => update('status', event.target.value as TicketFilters['status'])}>
-            <option value="all">All statuses</option>
-            {TICKET_STATUSES.map((status) => <option key={status} value={status}>{STATUS_LABELS[status]}</option>)}
-          </select>
-        </label>
         <label>
           <span className="sr-only">Filter by priority</span>
           <select value={filters.priority} onChange={(event) => update('priority', event.target.value as TicketFilters['priority'])}>
