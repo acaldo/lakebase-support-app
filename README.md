@@ -18,18 +18,32 @@ There is intentionally no endpoint or UI control for deleting individual message
 
 Requirements: Node.js 22.16 or newer and Docker.
 
-Run the complete local stack. The Node application, the Vite production build, and PostgreSQL 17 all run through Docker:
+Run the complete local stack with hot reload. The source is mounted into the app container, while `node_modules` is kept in the named Docker volume `support_app_node_modules`:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+Open `http://localhost:5173`. The API remains available at `http://localhost:3001`.
+
+The default `docker-compose.yml` continues to run the production build. Use it alone when you want to validate the production image:
 
 ```bash
 docker compose up --build
 ```
 
-Open `http://localhost:3001`.
+With the development compose files, changes to files under `client/`, `server/`, and `shared/` are picked up automatically by Vite and `tsx`.
 
-After source changes, rebuild the application container so the new bundle is served:
+To stop the development stack without touching PostgreSQL data:
 
 ```bash
-docker compose up -d --build app
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down
+```
+
+If dependencies need to be reinstalled from scratch, remove only the app dependencies volume:
+
+```bash
+docker volume rm lakebase-support-app_support_app_node_modules
 ```
 
 The PostgreSQL data is stored in the named Docker volume `support_postgres_data`. Rebuilding or restarting either container does not remove tickets:
