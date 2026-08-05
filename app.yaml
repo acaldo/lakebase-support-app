@@ -8,4 +8,4 @@ env:
   - name: DB_SCHEMA
     value: support_board
   - name: LAKEBASE_ENDPOINT_NAME
-    valueFrom: postgres
+    valueFrom: database

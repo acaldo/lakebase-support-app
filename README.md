@@ -60,11 +60,11 @@ Both providers use the same `support_board` schema, migrations, repository, and 
 
 1. In Free Edition, create or open the Lakebase project and keep PostgreSQL 17 with its production branch/database.
 2. Create a custom Databricks App named `lakebase-support-board`.
-3. Add the Lakebase Autoscaling database as an App resource with resource key `postgres` and **Can connect and create** permission.
+3. Add the Lakebase Autoscaling database as an App resource with resource key `database` and **Can connect and create** permission.
 4. Select this repository's Databricks Git folder as the deployment source.
 5. Deploy. Databricks detects `package.json`, installs dependencies, runs `npm run build`, and starts the command in `app.yaml`.
 
-`app.yaml` sets `DB_PROVIDER=lakebase` and resolves `LAKEBASE_ENDPOINT_NAME` from the `postgres` resource. Databricks injects `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, and `DATABRICKS_CLIENT_SECRET` at runtime. No Lakebase password or OAuth secret belongs in source control.
+`app.yaml` sets `DB_PROVIDER=lakebase` and resolves `LAKEBASE_ENDPOINT_NAME` from the `database` resource key configured in the App. Databricks injects `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, and `DATABRICKS_CLIENT_SECRET` at runtime. No Lakebase password or OAuth secret belongs in source control.
 
 After deployment, verify this sequence and refresh the App after every mutation:
 
